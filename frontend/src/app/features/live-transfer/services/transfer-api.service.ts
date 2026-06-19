@@ -1,0 +1,33 @@
+import { Injectable } from '@angular/core';
+import { resolveTransferRuntimeConfig } from './transfer-endpoints';
+
+export interface CreateTransferResponse {
+  transferId: string;
+  roomCode: string;
+  status: string;
+  expiresAtUtc: string;
+}
+
+export interface GetTransferResponse {
+  transferId: string;
+  roomCode: string;
+  status: string;
+  expiresAtUtc: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class TransferApiService {
+  private readonly baseUrl = resolveTransferRuntimeConfig().apiBaseUrl;
+
+  async createTransfer(): Promise<CreateTransferResponse> {
+    const response = await fetch(`${this.baseUrl}/api/transfers`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to create transfer room');
+    return response.json();
+  }
+
+  async getTransfer(roomCode: string): Promise<GetTransferResponse> {
+    const response = await fetch(`${this.baseUrl}/api/transfers/${encodeURIComponent(roomCode)}`);
+    if (!response.ok) throw new Error('Transfer room not found');
+    return response.json();
+  }
+}

@@ -1,0 +1,332 @@
+<main class="page-shell">
+  <div class="glow-orb orange"></div>
+  <div class="glow-orb violet"></div>
+  
+  <header class="navbar fade-in">
+    <div class="brand">
+      <!-- Ant Logo SVG -->
+      <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 25 C45 25, 42 30, 42 35 C42 40, 45 42, 50 42 C55 42, 58 40, 58 35 C58 30, 55 25, 50 25 Z" fill="none" stroke="currentColor" stroke-width="3" />
+        <path d="M50 42 C40 42, 35 48, 35 55 C35 62, 40 65, 50 65 C60 65, 65 62, 65 55 C65 48, 60 42, 50 42 Z" fill="none" stroke="currentColor" stroke-width="3" />
+        <circle cx="50" cy="35" r="3" fill="currentColor" />
+        <path d="M42 35 Q30 30, 25 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M58 35 Q70 30, 75 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <!-- Node links -->
+        <line x1="50" y1="55" x2="20" y2="80" stroke="currentColor" stroke-width="2" stroke-dasharray="3,3" />
+        <line x1="50" y1="55" x2="80" y2="80" stroke="currentColor" stroke-width="2" stroke-dasharray="3,3" />
+        <circle cx="20" cy="80" r="4" fill="var(--primary)" />
+        <circle cx="80" cy="80" r="4" fill="var(--secondary)" />
+      </svg>
+      <span class="brand-title">AntShare <span class="badge">E2EE</span></span>
+    </div>
+    <div class="security-lock">
+      <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      <span>Direct P2P Link</span>
+    </div>
+  </header>
+
+  <div class="app-container fade-in">
+    <!-- Left panel: File Selection & Info -->
+    <section class="card glass file-section">
+      <h2 class="card-title">1. Stage Your File</h2>
+      <p class="card-subtitle">Select or drop a file to queue it for direct peer-to-peer transmission.</p>
+
+      @if (!file()) {
+        <!-- Drag & Drop Zone -->
+        <div class="dropzone" 
+             [class.active]="dragActive()"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onDrop($event)">
+          <input type="file" id="fileInput" (change)="onFileSelected($event)" class="hidden-input" />
+          <label for="fileInput" class="dropzone-label">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <span class="primary-text">Drag & drop your file here</span>
+            <span class="secondary-text">or <span class="highlight">browse files</span></span>
+            <span class="limit-text">Any format. Encrypted entirely in-browser.</span>
+          </label>
+        </div>
+      } @else {
+        <!-- Selected File Card -->
+        <div class="file-card fade-in">
+          <div class="file-icon-wrapper">
+            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <div class="file-details">
+            <div class="file-name" [title]="file()!.name">{{ file()!.name }}</div>
+            <div class="file-meta">
+              <span class="file-size">{{ formatBytes(file()!.size) }}</span>
+              <span class="file-divider">•</span>
+              <span class="file-type">{{ file()!.type || 'Binary' }}</span>
+            </div>
+          </div>
+          <button type="button" class="remove-btn" (click)="removeSelectedFile($event)" title="Remove File">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- Right panel: Signal & Connection State -->
+    <section class="card glass signaling-section">
+      <h2 class="card-title">2. Connect and Transfer</h2>
+      
+      <!-- IDLE / ROOM CREATION -->
+      @if (state.status() === 'idle') {
+        <div class="state-container idle fade-in">
+          <div class="icon-pulse-glow cyan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 8v8M8 12h8"></path>
+            </svg>
+          </div>
+          <h3>Initialize Room</h3>
+          <p>Create a secure room to coordinate browser sign-in and ICE exchange.</p>
+          <button type="button" class="btn primary glowing-btn" (click)="createRoom()">
+            Create Transfer Room
+          </button>
+        </div>
+      }
+
+      <!-- WAITING FOR RECEIVER -->
+      @if (state.status() === 'waiting-for-receiver') {
+        <div class="state-container waiting fade-in">
+          <div class="radar-container">
+            <div class="radar-circle ring1"></div>
+            <div class="radar-circle ring2"></div>
+            <div class="radar-circle ring3"></div>
+            <div class="radar-core">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M2 12h20"></path>
+              </svg>
+            </div>
+          </div>
+          <h3>Listening for Connections</h3>
+          <p class="status-msg">Share the secure code or link with the receiver.</p>
+
+          <div class="room-code-box">
+            <span class="room-code-label">SECURE ROOM CODE</span>
+            <div class="room-code">{{ state.roomCode() }}</div>
+          </div>
+
+          <div class="share-box">
+            <div class="share-link-input">{{ shareUrl() }}</div>
+            <button type="button" class="copy-btn" (click)="copyLink()" [class.copied]="linkCopied()">
+              @if (linkCopied()) {
+                <span>Copied!</span>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              }
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- PENDING APPROVAL -->
+      @if (state.status() === 'pending-approval') {
+        <div class="state-container pending fade-in">
+          <div class="icon-pulse-glow warning pulse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h3>Connection Request</h3>
+          <p>A receiver wants to connect. Verify the device details below before accepting:</p>
+
+          @if (receiverDevice()) {
+            <div class="device-card">
+              <div class="device-icon">
+                @if (receiverDevice()!.isMobile) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
+                }
+              </div>
+              <div class="device-details">
+                <div class="device-name">{{ receiverDevice()!.browser }} browser</div>
+                <div class="device-os">Running on {{ receiverDevice()!.os }}</div>
+              </div>
+            </div>
+          } @else {
+            <div class="device-card">
+              <div class="device-name">Unknown Device</div>
+            </div>
+          }
+
+          <div class="btn-group">
+            <button type="button" class="btn success glowing-btn" (click)="approveReceiver()">
+              Approve & Open Tunnel
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- HANDSHAKE -->
+      @if (state.status() === 'handshake') {
+        <div class="state-container handshake fade-in">
+          <div class="lock-animation">
+            <svg class="shield-lock-svg" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--primary)" stroke-width="2" stroke-dasharray="280" stroke-dashoffset="0" />
+              <path class="key-path" d="M30 65 L45 50 M45 50 Q48 45, 52 48" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" />
+              <path class="lock-shackle" d="M40 45 V35 A10 10 0 0 1 60 35 V45" fill="none" stroke="var(--secondary)" stroke-width="4" stroke-linecap="round" />
+              <rect class="lock-body" x="35" y="45" width="30" height="25" rx="3" fill="var(--card-bg-dark)" stroke="var(--secondary)" stroke-width="3" />
+              <circle cx="50" cy="55" r="3" fill="var(--text-primary)" />
+            </svg>
+          </div>
+          <h3>Securing Connection</h3>
+          <p>Exchanging RSA-2048 and AES-GCM-256 wrapping keys. Creating cryptographic handshake...</p>
+        </div>
+      }
+
+      <!-- APPROVED / TUNNEL SECURED -->
+      @if (state.status() === 'approved') {
+        <div class="state-container approved fade-in">
+          <div class="icon-pulse-glow success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <polyline points="9 11 11 13 15 9"></polyline>
+            </svg>
+          </div>
+          <h3>Tunnel Secured</h3>
+          <p>End-to-End Encrypted data channel established with receiver.</p>
+          
+          @if (!file()) {
+            <div class="info-alert warning-alert">
+              Please stage a file in the left panel to start.
+            </div>
+          }
+
+          <button type="button" 
+                  class="btn primary glowing-btn" 
+                  [disabled]="!file()"
+                  (click)="startTransfer()">
+            Start Encrypted Transfer
+          </button>
+        </div>
+      }
+
+      <!-- TRANSFERRING -->
+      @if (state.status() === 'transferring') {
+        <div class="state-container transferring fade-in">
+          <div class="progress-ring-container">
+            <svg class="progress-ring" viewBox="0 0 120 120">
+              <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+              <circle class="progress-ring-fill" 
+                      cx="60" 
+                      cy="60" 
+                      r="54" 
+                      [style.strokeDashoffset]="339.29 - (339.29 * state.progressPercent()) / 100" />
+            </svg>
+            <div class="progress-text">
+              <span class="percent">{{ state.progressPercent() }}%</span>
+              <span class="label">sent</span>
+            </div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">SPEED</span>
+              <span class="metric-value">{{ formatSpeed(state.transferSpeedBps()) }}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">ETA</span>
+              <span class="metric-value">{{ formatEta(state.etaSeconds()) }}</span>
+            </div>
+          </div>
+
+          <div class="live-flow-indicator">
+            <div class="dot d1"></div>
+            <div class="dot d2"></div>
+            <div class="dot d3"></div>
+            <span class="flow-text">P2P Encrypted Stream Active</span>
+          </div>
+        </div>
+      }
+
+      <!-- COMPLETED -->
+      @if (state.status() === 'completed') {
+        <div class="state-container completed fade-in">
+          <div class="icon-pulse-glow success burst">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h3>Transfer Complete!</h3>
+          <p>The file has been successfully encrypted, sliced, transferred P2P, and reconstructed on the receiver's end.</p>
+          
+          <div class="transfer-summary">
+            <div class="summary-row">
+              <span>File:</span>
+              <strong class="text-truncate">{{ file()?.name }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Average Speed:</span>
+              <strong>{{ formatSpeed(state.transferSpeedBps()) }}</strong>
+            </div>
+          </div>
+
+          <a href="/" class="btn secondary">Start New Transfer</a>
+        </div>
+      }
+
+      <!-- FAILED -->
+      @if (state.status() === 'failed') {
+        <div class="state-container failed fade-in">
+          <div class="icon-pulse-glow danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h3>Transfer Failed</h3>
+          <p class="error-msg">{{ state.errorMessage() || 'An unknown network error occurred.' }}</p>
+          
+          <a href="/" class="btn secondary">Reset Room</a>
+        </div>
+      }
+
+      <!-- Technical Peer Connection Footnotes -->
+      <footer class="peer-details">
+        <div class="badge-row">
+          <span class="badge" [class.active]="state.dataChannelReady()">
+            Channel: {{ state.dataChannelReady() ? 'Open' : 'Closed' }}
+          </span>
+          <span class="badge">
+            RTC: {{ state.peerConnectionState() }}
+          </span>
+          <span class="badge">
+            ICE: {{ state.iceConnectionState() }}
+          </span>
+        </div>
+      </footer>
+    </section>
+  </div>
+</main>
+

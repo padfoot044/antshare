@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AntShare.Api/AntShare.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AntShare.Api.Tests/AntShare.Api.Tests.csproj" />
+  </Folder>
+</Solution>

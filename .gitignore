@@ -1,0 +1,34 @@
+# .NET build and IDE artifacts
+**/bin/
+**/obj/
+.vs/
+**/.vs/
+TestResults/
+
+# Frontend dependencies and generated output
+**/node_modules/
+frontend/dist/
+frontend/tmp/
+frontend/out-tsc/
+frontend/.angular/
+frontend/coverage/
+frontend/.vercel/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Generated transfer test payloads
+transfer-test-*.bin
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
