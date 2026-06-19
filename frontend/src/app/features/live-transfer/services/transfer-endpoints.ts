@@ -28,7 +28,7 @@ function normalizeUrl(url: string, fallbackPath: string): string {
 
 export function resolveTransferRuntimeConfig(): TransferRuntimeConfig {
   return {
-    apiBaseUrl: 'https://congruent-viviana-unsalubriously.ngrok-free.dev',
-    signalRHubUrl: 'https://congruent-viviana-unsalubriously.ngrok-free.dev/transfer-hub',
+    apiBaseUrl: 'https://2ff1-122-180-87-180.ngrok-free.app',
+    signalRHubUrl: 'https://2ff1-122-180-87-180.ngrok-free.app/transfer-hub',
   };
 }

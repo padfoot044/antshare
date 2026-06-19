@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { resolveTransferRuntimeConfig } from './transfer-endpoints';
 
 @Injectable({ providedIn: 'root' })
@@ -7,12 +7,20 @@ export class TransferSignalrService {
   private readonly hubUrl = resolveTransferRuntimeConfig().signalRHubUrl;
   private connection?: HubConnection;
 
+  get state(): HubConnectionState {
+    return this.connection?.state ?? HubConnectionState.Disconnected;
+  }
+
   async connect(): Promise<void> {
-    if (this.connection && this.connection.state === 'Connected') return;
+    if (this.connection && this.connection.state === HubConnectionState.Connected) return;
 
     this.connection = new HubConnectionBuilder()
-      .withUrl(this.hubUrl)
-      .withAutomaticReconnect()
+      // ngrok-skip-browser-warning avoids the ngrok-free interstitial on the
+      // negotiate request; harmless without ngrok.
+      .withUrl(this.hubUrl, { headers: { 'ngrok-skip-browser-warning': 'true' } })
+      // Retry quickly at first, then back off, and keep trying for ~2 minutes so a
+      // brief Wi-Fi/cellular blip doesn't kill an in-flight transfer.
+      .withAutomaticReconnect([0, 1000, 2000, 5000, 10000, 15000, 30000, 30000, 30000])
       .build();
 
     await this.connection.start();
@@ -28,6 +36,20 @@ export class TransferSignalrService {
 
   async approveReceiver(roomCode: string): Promise<void> {
     await this.connection?.invoke('ApproveReceiver', roomCode);
+  }
+
+  async rejectReceiver(roomCode: string): Promise<void> {
+    await this.connection?.invoke('RejectReceiver', roomCode);
+  }
+
+  /** Best-effort, fire-and-forget notice that we are leaving (tab close/cancel). */
+  async leaveRoom(roomCode: string): Promise<void> {
+    if (this.connection?.state !== HubConnectionState.Connected) return;
+    try {
+      await this.connection.invoke('LeaveRoom', roomCode);
+    } catch {
+      // The socket may already be gone — the server's OnDisconnected covers it.
+    }
   }
 
   async relayOffer(roomCode: string, offer: RTCSessionDescriptionInit): Promise<void> {
@@ -54,12 +76,34 @@ export class TransferSignalrService {
     await this.connection?.invoke('CompleteHandshake', roomCode, payload);
   }
 
+  // --- Connection lifecycle (resilience) ---
+  onReconnecting(handler: (error?: Error) => void): void {
+    this.connection?.onreconnecting((error) => handler(error));
+  }
+
+  onReconnected(handler: (connectionId?: string) => void): void {
+    this.connection?.onreconnected((connectionId) => handler(connectionId));
+  }
+
+  onClose(handler: (error?: Error) => void): void {
+    this.connection?.onclose((error) => handler(error));
+  }
+
+  // --- Application events ---
   onReceiverJoined(handler: (payload: { roomCode: string; deviceLabel: string }) => void): void {
     this.connection?.on('ReceiverJoined', handler);
   }
 
   onSenderApproved(handler: (payload: { roomCode: string }) => void): void {
     this.connection?.on('SenderApproved', handler);
+  }
+
+  onSenderRejected(handler: (payload: { roomCode: string }) => void): void {
+    this.connection?.on('SenderRejected', handler);
+  }
+
+  onPeerLeft(handler: (payload: { roomCode: string; role: string }) => void): void {
+    this.connection?.on('PeerLeft', handler);
   }
 
   onOffer(handler: (offer: RTCSessionDescriptionInit) => void): void {

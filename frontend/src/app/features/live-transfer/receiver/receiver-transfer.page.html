@@ -26,6 +26,20 @@
     </div>
   </header>
 
+  <!-- Connectivity banner: surfaces offline / reconnecting without disturbing the flow -->
+  @if (state.connectivityIssue(); as issue) {
+    <div class="connectivity-banner"
+         [class.offline]="issue === 'offline'"
+         [class.reconnecting]="issue === 'reconnecting'">
+      <span class="conn-indicator"></span>
+      @if (issue === 'offline') {
+        <span>You're offline — we'll resume automatically once your connection is back.</span>
+      } @else {
+        <span>Connection unstable — reconnecting to keep your transfer alive…</span>
+      }
+    </div>
+  }
+
   <div class="app-container fade-in">
     <!-- Left panel: Incoming File Details -->
     <section class="card glass file-section">
@@ -112,6 +126,20 @@
           </div>
           <h3>Tunnel Secured</h3>
           <p>E2EE signaling completed. Waiting for sender to initiate chunk slicing and push file bytes...</p>
+
+          @if (state.verificationCode(); as code) {
+            <div class="verify-card">
+              <div class="verify-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+                <span>Security verification code</span>
+              </div>
+              <div class="verify-code">{{ code }}</div>
+              <p class="verify-hint">Make sure this matches the sender's screen. If it differs, someone may be intercepting the connection.</p>
+            </div>
+          }
         </div>
       }
 
@@ -179,6 +207,22 @@
         </div>
       }
 
+      <!-- DISCONNECTED (peer left) -->
+      @if (state.status() === 'disconnected') {
+        <div class="state-container disconnected fade-in">
+          <div class="icon-pulse-glow warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 17H7A5 5 0 0 1 7 7M15 7h2a5 5 0 0 1 0 10h-2"></path>
+              <line x1="8" y1="12" x2="10" y2="12"></line>
+              <line x1="14" y1="12" x2="16" y2="12"></line>
+            </svg>
+          </div>
+          <h3>Sender Disconnected</h3>
+          <p class="error-msg">{{ state.errorMessage() || 'The other device left the session.' }}</p>
+          <a href="/" class="btn secondary">Start New Session</a>
+        </div>
+      }
+
       <!-- FAILED -->
       @if (state.status() === 'failed') {
         <div class="state-container failed fade-in">
@@ -191,7 +235,7 @@
           </div>
           <h3>Session Interrupted</h3>
           <p class="error-msg">{{ state.errorMessage() || 'WebRTC DataChannel or SignalR failed.' }}</p>
-          
+
           <a href="/" class="btn secondary">Start New Session</a>
         </div>
       }

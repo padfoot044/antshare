@@ -58,7 +58,7 @@
         },
         "serve": {
           "options": {
-            "allowedHosts": ["6193-122-180-87-180.ngrok-free.app"]
+            "allowedHosts": ["9435-122-180-87-180.ngrok-free.app"]
           },
           "builder": "@angular/build:dev-server",
           "configurations": {

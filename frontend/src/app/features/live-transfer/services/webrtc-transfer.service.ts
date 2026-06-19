@@ -9,7 +9,7 @@ type ChunkMessage =
 
 @Injectable({ providedIn: 'root' })
 export class WebRtcTransferService {
-  private readonly peer = new RTCPeerConnection({
+  private static readonly rtcConfig: RTCConfiguration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
@@ -20,7 +20,9 @@ export class WebRtcTransferService {
       //   credential: 'your-password'
       // }
     ],
-  });
+  };
+
+  private peer!: RTCPeerConnection;
   private channel?: RTCDataChannel;
   private readonly remoteCandidatesQueue: RTCIceCandidateInit[] = [];
   private onOfferHandler?: (offer: RTCSessionDescriptionInit) => Promise<void>;
@@ -41,15 +43,58 @@ export class WebRtcTransferService {
     private readonly fileChunkService: FileChunkService,
     private readonly state: TransferStateService,
   ) {
+    this.initPeer();
+  }
+
+  private initPeer(): void {
+    this.peer = new RTCPeerConnection(WebRtcTransferService.rtcConfig);
+
     this.peer.onicecandidate = (event) => {
       if (event.candidate && this.onIceHandler) void this.onIceHandler(event.candidate);
     };
     this.peer.onconnectionstatechange = () => {
-      this.state.peerConnectionState.set(this.peer.connectionState);
+      const connState = this.peer.connectionState;
+      this.state.peerConnectionState.set(connState);
+
+      // A peer connection that fails/closes mid-transfer (and isn't using the
+      // server relay) is a hard failure — surface it instead of hanging.
+      if (
+        (connState === 'failed' || connState === 'disconnected') &&
+        !this.useSignalrFallback &&
+        this.state.status() === 'transferring'
+      ) {
+        this.state.errorMessage.set('The peer-to-peer connection dropped during transfer.');
+        this.state.status.set('failed');
+        this.state.dataChannelReady.set(false);
+      }
     };
     this.peer.oniceconnectionstatechange = () => {
       this.state.iceConnectionState.set(this.peer.iceConnectionState);
     };
+  }
+
+  /**
+   * Tear down the current peer connection and build a fresh one. WebRTC peer
+   * connections cannot be reused once closed/failed — Safari in particular will
+   * never recover one — so a clean retry needs a brand-new connection.
+   */
+  reset(): void {
+    try {
+      this.channel?.close();
+      this.peer.close();
+    } catch {
+      // already closed
+    }
+    this.channel = undefined;
+    this.remoteCandidatesQueue.length = 0;
+    this.encryptedChunks.clear();
+    this.expectedChunks = 0;
+    this.useSignalrFallback = false;
+    this.receiverReceivedBytes = 0;
+    this.receiverStartTime = 0;
+    this.fileSize = 0;
+    this.state.dataChannelReady.set(false);
+    this.initPeer();
   }
 
   setSignalHandlers(
@@ -64,6 +109,11 @@ export class WebRtcTransferService {
 
   setFallbackChunkHandler(handler: (chunkJson: string) => Promise<void>): void {
     this.onFallbackChunkHandler = handler;
+  }
+
+  /** True when bytes are being relayed through SignalR rather than a direct P2P channel. */
+  isUsingFallback(): boolean {
+    return this.useSignalrFallback;
   }
 
   handleFallbackChunk(chunkJson: string): void {

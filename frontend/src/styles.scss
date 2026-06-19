@@ -1074,6 +1074,141 @@ body::after {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Connectivity Banner (offline / reconnecting) */
+.connectivity-banner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 10px 20px;
+  text-align: center;
+  border-bottom: 1px solid transparent;
+  animation: bannerSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+
+  .conn-indicator {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &.reconnecting {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+    border-bottom-color: rgba(245, 158, 11, 0.25);
+
+    .conn-indicator {
+      background: var(--warning);
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+      animation: connPing 1.4s infinite cubic-bezier(0.66, 0, 0, 1);
+    }
+  }
+
+  &.offline {
+    background: rgba(244, 63, 94, 0.12);
+    color: #fda4af;
+    border-bottom-color: rgba(244, 63, 94, 0.25);
+
+    .conn-indicator {
+      background: var(--danger);
+      animation: iconPulse 1.6s infinite ease-in-out;
+    }
+  }
+}
+
+@keyframes bannerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes connPing {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* E2EE out-of-band verification code card */
+.verify-card {
+  width: 100%;
+  max-width: 320px;
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.08), rgba(6, 182, 212, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .verify-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--success);
+    margin-bottom: 10px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .verify-code {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    text-align: center;
+    padding: 6px 0;
+    user-select: text;
+  }
+
+  .verify-hint {
+    font-size: 0.72rem !important;
+    color: var(--text-muted) !important;
+    line-height: 1.4;
+    margin: 8px 0 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Danger variant of the inline alert (insecure context warning) */
+.info-alert.danger-alert {
+  background: rgba(244, 63, 94, 0.06);
+  border-color: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+}
+
+/* Peer-disconnected state reuses the failed layout but in a softer warning tone */
+.state-container.disconnected {
+  .error-msg {
+    color: #fcd34d !important;
+    background: rgba(245, 158, 11, 0.06);
+    border-color: rgba(245, 158, 11, 0.18);
+  }
+}
+
+/* Respect users who prefer reduced motion: keep meaning, drop the movement */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Responsive breakpoint */
 @media (max-width: 850px) {
   .app-container {

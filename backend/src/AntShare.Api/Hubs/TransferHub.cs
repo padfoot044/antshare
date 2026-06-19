@@ -65,4 +65,56 @@ public sealed class TransferHub(ITransferSessionStore store) : Hub
 
     public Task CompleteHandshake(string roomCode, object payload) =>
         Clients.OthersInGroup(roomCode).SendAsync("HandshakeCompleted", payload);
+
+    /// <summary>Proactive notice (tab close / cancel) that this peer is leaving the room.</summary>
+    public async Task LeaveRoom(string roomCode)
+    {
+        var session = store.GetByRoomCode(roomCode);
+        if (session is null)
+        {
+            return;
+        }
+
+        var role = ResolveRole(session, Context.ConnectionId);
+        if (role is null)
+        {
+            return;
+        }
+
+        await Clients.OthersInGroup(roomCode).SendAsync("PeerLeft", new { roomCode, role });
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        // Find any room this connection belonged to and tell the other side it dropped,
+        // so the UI can show a clear "peer disconnected" message instead of hanging.
+        foreach (var session in store.GetAll())
+        {
+            var role = ResolveRole(session, Context.ConnectionId);
+            if (role is null)
+            {
+                continue;
+            }
+
+            await Clients.Group(session.RoomCode).SendAsync("PeerLeft", new { roomCode = session.RoomCode, role });
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    private static string? ResolveRole(TransferSession session, string connectionId)
+    {
+        if (session.SenderConnectionId == connectionId)
+        {
+            return "sender";
+        }
+
+        if (session.ReceiverConnectionId == connectionId)
+        {
+            return "receiver";
+        }
+
+        return null;
+    }
 }
